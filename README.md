@@ -12,6 +12,7 @@ This script does not use Luma's official APIs and is subject to change. It only 
    ```
    AUTH_KEY=usr-XXXXXX
    ```
+   You can find this value by searching for `luma.auth-session-key` cookie on a luma authenticated request inside of chrome developer tools.
 2. Install the necessary dependencies by running:
    ```
    npm install
