@@ -27,7 +27,7 @@ const reqHeaders = {
 
 let allEvents = []; // Initialize an array to hold all events
 
-function fetchEvents(cursor = null) {
+function fetchFutureEvents(cursor = null) {
   // Check for the existence of the 'exported' directory at the start
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   ensureDirectoryExistence(path.join(__dirname, "exported"));
@@ -46,9 +46,8 @@ function fetchEvents(cursor = null) {
       allEvents = allEvents.concat(data.entries); // Accumulate events
 
       if (data.has_more && data.next_cursor) {
-        fetchEvents(data.next_cursor); // Recursively fetch next set of events
+        fetchFutureEvents(data.next_cursor); // Recursively fetch next set of events
       } else {
-        console.log("All events fetched successfully!", allEvents.length);
         // Fetch guests for each event
         allEvents = allEvents.map((event) => {
           return {
@@ -61,6 +60,49 @@ function fetchEvents(cursor = null) {
         fetchGuestsForEvents(allEvents);
         // Export all events to CSV
         exportEventsToCSV(allEvents);
+      }
+    })
+    .catch((error) => {
+      console.error("Error fetching events:", error);
+    });
+}
+
+function fetchPastEvents(cursor = null) {
+  // Check for the existence of the 'exported' directory at the start
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  ensureDirectoryExistence(path.join(__dirname, "exported"));
+  let url = "https://api.lu.ma/home/get-events?period=past";
+  if (cursor) {
+    url += `&pagination_cursor=${cursor}`; // Append cursor if present
+  }
+
+  fetch(url, {
+    body: null,
+    method: "GET",
+    headers: reqHeaders,
+  })
+    .then((response) => response.json())
+    .then(async (data) => {
+      allEvents = allEvents.concat(data.entries); // Accumulate events
+
+      if (data.has_more && data.next_cursor) {
+        fetchPastEvents(data.next_cursor); // Recursively fetch next set of events
+      } else {
+        // Fetch guests for each event
+        allEvents = allEvents
+          .filter(
+            (event) => new Date(event.event.start_at) > new Date("2024-04-20")
+          )
+          .map((event) => {
+            return {
+              event: {
+                ...event.event,
+                event_url: `https://lu.ma/${event.event.url}`,
+              },
+            };
+          });
+
+        fetchFutureEvents();
       }
     })
     .catch((error) => {
@@ -187,4 +229,10 @@ async function fetchGuests({ eventApiId, eventName, eventURL }) {
   }
 }
 
-fetchEvents(); // Initial call to start fetching events
+function init() {
+  fetchPastEvents();
+}
+
+init();
+
+// fetchEvents(); // Initial call to start fetching events
